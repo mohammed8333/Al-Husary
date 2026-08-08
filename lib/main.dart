@@ -181,7 +181,11 @@ class _QuranHomePageState extends State<QuranHomePage> {
       final List<FileSystemEntity> files = verseDir.listSync();
       for (var file in files) {
         if (file is File) {
-          localFiles.add(file.uri.pathSegments.last); // e.g. "001001.mp3"
+          if (await file.length() > 0) {
+            localFiles.add(file.uri.pathSegments.last); // e.g. "001001.mp3"
+          } else {
+            try { await file.delete(); } catch (_) {}
+          }
         }
       }
     }
@@ -195,10 +199,14 @@ class _QuranHomePageState extends State<QuranHomePage> {
         if (file is File) {
           final filename = file.uri.pathSegments.last;
           if (filename.endsWith('.mp3')) {
-            final idxStr = filename.replaceAll('.mp3', '');
-            final int? idx = int.tryParse(idxStr);
-            if (idx != null) {
-              localSurahIndexes.add(idx);
+            if (await file.length() > 0) {
+              final idxStr = filename.replaceAll('.mp3', '');
+              final int? idx = int.tryParse(idxStr);
+              if (idx != null) {
+                localSurahIndexes.add(idx);
+              }
+            } else {
+              try { await file.delete(); } catch (_) {}
             }
           }
         }
@@ -313,7 +321,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
     final docsDir = await getApplicationDocumentsDirectory();
     final localFile = File('${docsDir.path}/000_versebyverse/$filename');
 
-    final String sourcePath = await localFile.exists()
+    final String sourcePath = (await localFile.exists() && await localFile.length() > 0)
         ? localFile.path
         : 'https://everyayah.com/data/Husary_Muallim_128kbps/$filename';
 
@@ -338,7 +346,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
       final docsDir = await getApplicationDocumentsDirectory();
       final localFile = File('${docsDir.path}/Al-Husaree_Almoalim/$surahPad.mp3');
       
-      final String url = await localFile.exists()
+      final String url = (await localFile.exists() && await localFile.length() > 0)
           ? localFile.path
           : 'https://server13.mp3quran.net/husr/$surahPad.mp3';
       
@@ -372,7 +380,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
     final docsDir = await getApplicationDocumentsDirectory();
     final localFile = File('${docsDir.path}/000_versebyverse/$filename');
 
-    final String sourcePath = await localFile.exists()
+    final String sourcePath = (await localFile.exists() && await localFile.length() > 0)
         ? localFile.path
         : 'https://everyayah.com/data/Husary_Muallim_128kbps/$filename';
 
@@ -435,7 +443,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
       final String surahPad = index.toString().padLeft(3, '0');
       final File localSurahFile = File('${surahDir.path}/$surahPad.mp3');
       
-      if (!await localSurahFile.exists()) {
+      if (!await localSurahFile.exists() || await localSurahFile.length() == 0) {
         final url = 'https://server13.mp3quran.net/husr/$surahPad.mp3';
         final response = await http.get(Uri.parse(url));
         if (response.statusCode == 200) {
@@ -483,7 +491,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
         final String filename = "$surahPad$ayahPad.mp3";
         
         final File localFile = File('${verseDir.path}/$filename');
-        if (!await localFile.exists()) {
+        if (!await localFile.exists() || await localFile.length() == 0) {
           setState(() {
             _downloadStatus = "جاري تحميل الآية ${ayah.index} من $_rangeTo";
             _downloadProgress = count / total;
