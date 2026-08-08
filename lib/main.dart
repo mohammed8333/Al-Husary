@@ -580,15 +580,27 @@ class _QuranHomePageState extends State<QuranHomePage> {
       );
     }
 
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: _buildCurrentScreen(),
-            ),
-            _buildAdaptivePlayer(),
-          ],
+    return PopScope(
+      canPop: _currentScreen == 'menu',
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_currentScreen != 'menu') {
+          setState(() {
+            _currentScreen = 'menu';
+          });
+          _stopPlayback();
+        }
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: _buildCurrentScreen(),
+              ),
+              _buildAdaptivePlayer(),
+            ],
+          ),
         ),
       ),
     );
