@@ -11,24 +11,75 @@ void main() {
   runApp(const QuranApp());
 }
 
-class QuranApp extends StatelessWidget {
+class QuranApp extends StatefulWidget {
   const QuranApp({super.key});
+
+  static void toggleTheme(BuildContext context) {
+    _QuranAppState? state = context.findAncestorStateOfType<_QuranAppState>();
+    state?.toggleTheme();
+  }
+
+  static bool isDarkMode(BuildContext context) {
+    _QuranAppState? state = context.findAncestorStateOfType<_QuranAppState>();
+    return state?._themeMode == ThemeMode.dark;
+  }
+
+  @override
+  State<QuranApp> createState() => _QuranAppState();
+}
+
+class _QuranAppState extends State<QuranApp> {
+  ThemeMode _themeMode = ThemeMode.dark;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isDark = prefs.getBool('isDarkMode') ?? true;
+    setState(() {
+      _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
+    });
+  }
+
+  void toggleTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _themeMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    });
+    await prefs.setBool('isDarkMode', _themeMode == ThemeMode.dark);
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'القرآن الكريم بصوت الحصري',
       debugShowCheckedModeBanner: false,
+      themeMode: _themeMode,
       theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF06110D), // Deep dark forest green
-        primaryColor: const Color(0xFF1E4637), // Emerald
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFF2AF29), // Gold
-          secondary: Color(0xFFD4AF37), // Classic Gold
-          surface: Color(0xFF0D221A), // Panel background
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFF4F7F5),
+        primaryColor: const Color(0xFFD1E5DB),
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFFD48C00),
+          secondary: Color(0xFFB87600),
+          surface: Color(0xFFE3EDE8),
         ),
-        fontFamily: 'Cairo', // Default UI font
+        fontFamily: 'Cairo',
+      ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF06110D),
+        primaryColor: const Color(0xFF1E4637),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFFF2AF29),
+          secondary: Color(0xFFD4AF37),
+          surface: Color(0xFF0D221A),
+        ),
+        fontFamily: 'Cairo',
       ),
       home: const Directionality(
         textDirection: TextDirection.rtl,
@@ -70,12 +121,12 @@ class _QuranHomePageState extends State<QuranHomePage> {
   String _searchQuery = "";
 
   // Screen Routing State
-  String _currentScreen = 'menu'; // 'menu', 'full', 'range'
+  String _currentScreen = 'menu'; // 'menu', 'full', 'range', 'starred', 'search'
 
   // Playback States
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isPlaying = false;
-  String _playbackMode = 'ayah'; // 'ayah' or 'surah'
+  String _playbackMode = 'ayah'; // 'ayah', 'surah', 'starred', 'starred-single'
   int? _activeAyahIndex; // 1-indexed currently playing ayah
   
   // Ranges
@@ -101,6 +152,12 @@ class _QuranHomePageState extends State<QuranHomePage> {
   String _downloadProgressText = "";
   Set<String> _localAyahs = {}; // Track files that are offline
   Set<int> _localSurahs = {}; // Track full Surah continuous files
+
+  // New App Features States
+  String _selectedReciter = 'husary'; // 'husary', 'minshawy', 'alafasy'
+  double _playbackSpeed = 1.0;
+  List<Map<String, int>> _starredQueue = [];
+  int _starredQueueIndex = 0;
 
   @override
   void initState() {
@@ -160,6 +217,8 @@ class _QuranHomePageState extends State<QuranHomePage> {
       _starredAyahs = (prefs.getStringList('starredAyahs') ?? []).toSet();
       _ayahRepCount = prefs.getInt('ayahRepCount') ?? 1;
       _rangeRepCount = prefs.getInt('rangeRepCount') ?? 1;
+      _selectedReciter = prefs.getString('selectedReciter') ?? 'husary';
+      _playbackSpeed = prefs.getDouble('playbackSpeed') ?? 1.0;
     });
   }
 
@@ -168,6 +227,34 @@ class _QuranHomePageState extends State<QuranHomePage> {
     await prefs.setStringList('starredAyahs', _starredAyahs.toList());
     await prefs.setInt('ayahRepCount', _ayahRepCount);
     await prefs.setInt('rangeRepCount', _rangeRepCount);
+    await prefs.setString('selectedReciter', _selectedReciter);
+    await prefs.setDouble('playbackSpeed', _playbackSpeed);
+  }
+
+  String get _reciterVbyvPath {
+    return _selectedReciter == 'husary' ? '000_versebyverse' : '000_versebyverse/$_selectedReciter';
+  }
+
+  String get _reciterSurahPath {
+    return _selectedReciter == 'husary' ? 'Al-Husaree_Almoalim' : 'Al-Husaree_Almoalim/$_selectedReciter';
+  }
+
+  String get _reciterVbyvOnlineUrl {
+    if (_selectedReciter == 'minshawy') {
+      return 'https://everyayah.com/data/Minshawy_Teacher_128kbps/';
+    } else if (_selectedReciter == 'alafasy') {
+      return 'https://everyayah.com/data/Alafasy_128kbps/';
+    }
+    return 'https://everyayah.com/data/Husary_Muallim_128kbps/';
+  }
+
+  String get _reciterSurahOnlineUrl {
+    if (_selectedReciter == 'minshawy') {
+      return 'https://server11.mp3quran.net/minsh/';
+    } else if (_selectedReciter == 'alafasy') {
+      return 'https://server8.mp3quran.net/afs/';
+    }
+    return 'https://server13.mp3quran.net/husr/';
   }
 
   // Check what files are downloaded to local storage
@@ -175,7 +262,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
     final docsDir = await getApplicationDocumentsDirectory();
     
     // Check local verses
-    final verseDir = Directory('${docsDir.path}/000_versebyverse');
+    final verseDir = Directory('${docsDir.path}/$_reciterVbyvPath');
     final Set<String> localFiles = {};
     if (await verseDir.exists()) {
       final List<FileSystemEntity> files = verseDir.listSync();
@@ -191,7 +278,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
     }
 
     // Check local full Surahs
-    final surahDir = Directory('${docsDir.path}/Al-Husaree_Almoalim');
+    final surahDir = Directory('${docsDir.path}/$_reciterSurahPath');
     final Set<int> localSurahIndexes = {};
     if (await surahDir.exists()) {
       final List<FileSystemEntity> files = surahDir.listSync();
@@ -231,9 +318,24 @@ class _QuranHomePageState extends State<QuranHomePage> {
         if (singlePlayMode) {
           _currentAyahPlayCount++;
           if (_currentAyahPlayCount < _ayahRepCount) {
-            _playSingleAyahInLoop();
+            if (_playbackMode == 'starred-single') {
+              _playStarredSingle(_selectedSurahIndex, _activeAyahIndex!);
+            } else {
+              _playSingleAyahInLoop();
+            }
           } else {
             _stopPlayback();
+          }
+          return;
+        }
+
+        if (_playbackMode == 'starred') {
+          _currentAyahPlayCount++;
+          if (_currentAyahPlayCount < _ayahRepCount) {
+            _playStarredInQueue();
+          } else {
+            _currentAyahPlayCount = 0;
+            _advanceStarredQueue();
           }
           return;
         }
@@ -319,11 +421,11 @@ class _QuranHomePageState extends State<QuranHomePage> {
     final String filename = "$surahPad$ayahPad.mp3";
     
     final docsDir = await getApplicationDocumentsDirectory();
-    final localFile = File('${docsDir.path}/000_versebyverse/$filename');
+    final localFile = File('${docsDir.path}/$_reciterVbyvPath/$filename');
 
     final String sourcePath = (await localFile.exists() && await localFile.length() > 0)
         ? localFile.path
-        : 'https://everyayah.com/data/Husary_Muallim_128kbps/$filename';
+        : '$_reciterVbyvOnlineUrl$filename';
 
     try {
       await _audioPlayer.setAudioSource(
@@ -331,6 +433,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
             ? AudioSource.file(sourcePath)
             : AudioSource.uri(Uri.parse(sourcePath)),
       );
+      await _audioPlayer.setSpeed(_playbackSpeed);
       _audioPlayer.play();
     } catch (e) {
       _stopPlayback();
@@ -344,16 +447,17 @@ class _QuranHomePageState extends State<QuranHomePage> {
     if (_playbackMode == 'surah') {
       final String surahPad = _selectedSurahIndex.toString().padLeft(3, '0');
       final docsDir = await getApplicationDocumentsDirectory();
-      final localFile = File('${docsDir.path}/Al-Husaree_Almoalim/$surahPad.mp3');
+      final localFile = File('${docsDir.path}/$_reciterSurahPath/$surahPad.mp3');
       
       final String url = (await localFile.exists() && await localFile.length() > 0)
           ? localFile.path
-          : 'https://server13.mp3quran.net/husr/$surahPad.mp3';
+          : '$_reciterSurahOnlineUrl$surahPad.mp3';
       
       try {
         await _audioPlayer.setAudioSource(
           url.startsWith('/') ? AudioSource.file(url) : AudioSource.uri(Uri.parse(url)),
         );
+        await _audioPlayer.setSpeed(_playbackSpeed);
         _audioPlayer.play();
       } catch (e) {
         _showErrorDialog("فشل تشغيل السورة. تأكد من الاتصال بالإنترنت.");
@@ -378,11 +482,11 @@ class _QuranHomePageState extends State<QuranHomePage> {
     final String filename = "$surahPad$ayahPad.mp3";
     
     final docsDir = await getApplicationDocumentsDirectory();
-    final localFile = File('${docsDir.path}/000_versebyverse/$filename');
+    final localFile = File('${docsDir.path}/$_reciterVbyvPath/$filename');
 
     final String sourcePath = (await localFile.exists() && await localFile.length() > 0)
         ? localFile.path
-        : 'https://everyayah.com/data/Husary_Muallim_128kbps/$filename';
+        : '$_reciterVbyvOnlineUrl$filename';
 
     try {
       await _audioPlayer.setAudioSource(
@@ -390,7 +494,13 @@ class _QuranHomePageState extends State<QuranHomePage> {
             ? AudioSource.file(sourcePath)
             : AudioSource.uri(Uri.parse(sourcePath)),
       );
+      await _audioPlayer.setSpeed(_playbackSpeed);
       _audioPlayer.play();
+      
+      // Auto cache check
+      if (!sourcePath.startsWith('/')) {
+        _autoCacheFile(_selectedSurahIndex, _activeQueueIndex);
+      }
     } catch (e) {
       _showErrorDialog("فشل تشغيل الآية. تأكد من الاتصال بالإنترنت أو تحميل السورة.");
       _stopPlayback();
@@ -437,14 +547,14 @@ class _QuranHomePageState extends State<QuranHomePage> {
 
     try {
       final docsDir = await getApplicationDocumentsDirectory();
-      final surahDir = Directory('${docsDir.path}/Al-Husaree_Almoalim');
+      final surahDir = Directory('${docsDir.path}/$_reciterSurahPath');
       await surahDir.create(recursive: true);
 
       final String surahPad = index.toString().padLeft(3, '0');
       final File localSurahFile = File('${surahDir.path}/$surahPad.mp3');
       
       if (!await localSurahFile.exists() || await localSurahFile.length() == 0) {
-        final url = 'https://server13.mp3quran.net/husr/$surahPad.mp3';
+        final url = '$_reciterSurahOnlineUrl$surahPad.mp3';
         final response = await http.get(Uri.parse(url));
         if (response.statusCode == 200) {
           await localSurahFile.writeAsBytes(response.bodyBytes);
@@ -474,7 +584,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
 
     try {
       final docsDir = await getApplicationDocumentsDirectory();
-      final verseDir = Directory('${docsDir.path}/000_versebyverse');
+      final verseDir = Directory('${docsDir.path}/$_reciterVbyvPath');
       await verseDir.create(recursive: true);
 
       final List<Ayah> rangeAyahs = _currentSurah.ayahs
@@ -498,7 +608,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
             _downloadProgressText = "$count / $total";
           });
 
-          final url = 'https://everyayah.com/data/Husary_Muallim_128kbps/$filename';
+          final url = '$_reciterVbyvOnlineUrl$filename';
           final response = await http.get(Uri.parse(url));
           if (response.statusCode == 200) {
             await localFile.writeAsBytes(response.bodyBytes);
@@ -615,6 +725,10 @@ class _QuranHomePageState extends State<QuranHomePage> {
         return _buildFullSurahScreen();
       case 'range':
         return _buildSpecificVersesScreen();
+      case 'starred':
+        return _buildStarredScreen();
+      case 'search':
+        return _buildSearchScreen();
       default:
         return _buildMenuScreen();
     }
@@ -622,93 +736,147 @@ class _QuranHomePageState extends State<QuranHomePage> {
 
   // 1. Menu Screen
   Widget _buildMenuScreen() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
-      decoration: const BoxDecoration(
-        gradient: RadialGradient(
-          colors: [Color(0xFF143C2D), Color(0xFF06110D)],
-          center: Alignment.center,
-          radius: 1.0,
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.menu_book_outlined,
-            size: 90,
-            color: Color(0xFFF2AF29),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'القرآن الكريم بصوت الحصري',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFFF2AF29),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Stack(
+      children: [
+        Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              colors: isDark 
+                  ? [const Color(0xFF143C2D), const Color(0xFF06110D)]
+                  : [const Color(0xFFE2EFE7), const Color(0xFFF4F7F5)],
+              center: Alignment.center,
+              radius: 1.0,
             ),
           ),
-          const SizedBox(height: 10),
-          const Text(
-            'تطبيق تفاعلي مخصص لمساعدة الأطفال والطلاب على حفظ وتلاوة كتاب الله',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF9BB8AC),
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'بصوت الشيخ محمود خليل الحصري (المعلم)',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Color(0xCCF2AF29),
-            ),
-          ),
-          const SizedBox(height: 50),
-          
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 550),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildMenuCard(
-                  title: 'الاستماع للسورة كاملة',
-                  desc: 'تشغيل متواصل للسورة كاملة من البداية للنهاية مع إمكانية التحميل والاستماع بدون إنترنت.',
-                  icon: Icons.play_circle_filled,
-                  iconBgColor: const Color(0xFF3EC37A).withOpacity(0.15),
-                  iconColor: const Color(0xFF3EC37A),
-                  onTap: () {
-                    setState(() {
-                      _currentScreen = 'full';
-                      _playbackMode = 'surah';
-                    });
-                    _checkLocalAudioFiles();
-                  },
+                const SizedBox(height: 20),
+                Icon(
+                  Icons.menu_book_outlined,
+                  size: 90,
+                  color: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600),
                 ),
                 const SizedBox(height: 20),
-                _buildMenuCard(
-                  title: 'الاستماع لآيات محددة',
-                  desc: 'تحديد نطاق معين من الآيات، تكرار الآية الواحدة، وتكرار المجموعة لتسهيل الحفظ والترديد.',
-                  icon: Icons.tune_rounded,
-                  iconBgColor: const Color(0xFFF2AF29).withOpacity(0.15),
-                  iconColor: const Color(0xFFF2AF29),
-                  onTap: () {
-                    setState(() {
-                      _currentScreen = 'range';
-                      _playbackMode = 'ayah';
-                    });
-                    _checkLocalAudioFiles();
-                  },
+                Text(
+                  'القرآن الكريم التفاعلي',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'تطبيق تفاعلي مخصص لمساعدة الأطفال والطلاب على حفظ وتلاوة كتاب الله',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDark ? const Color(0xFF9BB8AC) : const Color(0xFF5A786C),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'يدعم التكرار، سرعة القراءة، والتشغيل دون اتصال بالقراء المتعددين',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? const Color(0xCCF2AF29) : const Color(0xCCB87600),
+                  ),
+                ),
+                const SizedBox(height: 40),
+                
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 550),
+                  child: Column(
+                    children: [
+                      _buildMenuCard(
+                        title: 'الاستماع للسورة كاملة',
+                        desc: 'تشغيل متواصل للسورة كاملة من البداية للنهاية مع إمكانية التحميل والاستماع بدون إنترنت.',
+                        icon: Icons.play_circle_filled,
+                        iconBgColor: const Color(0xFF3EC37A).withOpacity(0.15),
+                        iconColor: const Color(0xFF3EC37A),
+                        onTap: () {
+                          setState(() {
+                            _currentScreen = 'full';
+                            _playbackMode = 'surah';
+                          });
+                          _checkLocalAudioFiles();
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      _buildMenuCard(
+                        title: 'الاستماع لآيات محددة',
+                        desc: 'تحديد نطاق معين من الآيات، تكرار الآية الواحدة، وتكرار المجموعة لتسهيل الحفظ والترديد.',
+                        icon: Icons.tune_rounded,
+                        iconBgColor: const Color(0xFFF2AF29).withOpacity(0.15),
+                        iconColor: const Color(0xFFF2AF29),
+                        onTap: () {
+                          setState(() {
+                            _currentScreen = 'range';
+                            _playbackMode = 'ayah';
+                          });
+                          _checkLocalAudioFiles();
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      _buildMenuCard(
+                        title: 'الآيات المفضلة والمراجعة',
+                        desc: 'استعراض ومراجعة كافة الآيات التي قمت بتمييزها بنجمة لتسهيل مراجعتها وتثبيتها بشكل متتابع.',
+                        icon: Icons.star_rounded,
+                        iconBgColor: const Color(0xFF3EC37A).withOpacity(0.15),
+                        iconColor: const Color(0xFF3EC37A),
+                        onTap: () {
+                          setState(() {
+                            _currentScreen = 'starred';
+                            _playbackMode = 'starred';
+                          });
+                          _checkLocalAudioFiles();
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      _buildMenuCard(
+                        title: 'البحث في المصحف الشريف',
+                        desc: 'ابحث عن أي آية أو كلمة في القرآن الكريم فورياً، وانتقل إلى مكانها في السورة لبدء الحفظ والتلاوة.',
+                        icon: Icons.search_rounded,
+                        iconBgColor: const Color(0xFFF2AF29).withOpacity(0.15),
+                        iconColor: const Color(0xFFF2AF29),
+                        onTap: () {
+                          setState(() {
+                            _currentScreen = 'search';
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+        Positioned(
+          top: 16,
+          left: 16,
+          child: IconButton(
+            icon: Icon(
+              isDark ? Icons.wb_sunny_outlined : Icons.nightlight_round,
+              color: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600),
+            ),
+            onPressed: () {
+              QuranApp.toggleTheme(context);
+            },
+            tooltip: 'تبديل المظهر',
+          ),
+        ),
+      ],
     );
   }
 
@@ -1393,6 +1561,69 @@ class _QuranHomePageState extends State<QuranHomePage> {
               )
             ],
           ),
+          const SizedBox(height: 12),
+          const Divider(color: Colors.white12),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Text('القارئ: ', style: TextStyle(fontSize: 12, color: Colors.white60)),
+                  DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedReciter,
+                      dropdownColor: const Color(0xFF0D221A),
+                      style: const TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF2AF29)),
+                      items: const [
+                        DropdownMenuItem(value: 'husary', child: Text('الحصري (المعلم)')),
+                        DropdownMenuItem(value: 'minshawy', child: Text('المنشاوي (المعلم)')),
+                        DropdownMenuItem(value: 'alafasy', child: Text('العفاسي')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _selectedReciter = val;
+                          });
+                          _stopPlayback();
+                          _checkLocalAudioFiles();
+                          _savePreferences();
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const Text('السرعة: ', style: TextStyle(fontSize: 12, color: Colors.white60)),
+                  DropdownButtonHideUnderline(
+                    child: DropdownButton<double>(
+                      value: _playbackSpeed,
+                      dropdownColor: const Color(0xFF0D221A),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF2AF29)),
+                      items: const [
+                        DropdownMenuItem(value: 0.75, child: Text('0.75x')),
+                        DropdownMenuItem(value: 1.0, child: Text('1.0x')),
+                        DropdownMenuItem(value: 1.25, child: Text('1.25x')),
+                        DropdownMenuItem(value: 1.5, child: Text('1.5x')),
+                        DropdownMenuItem(value: 2.0, child: Text('2.0x')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _playbackSpeed = val;
+                          });
+                          _audioPlayer.setSpeed(val);
+                          _savePreferences();
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -1645,6 +1876,483 @@ class _QuranHomePageState extends State<QuranHomePage> {
           ),
         ],
       ),
+    );
+  }
+
+  // --- New Features Helpers & Screens ---
+
+  Future<void> _autoCacheFile(int surahIndex, int ayahIndex) async {
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final verseDir = Directory('${docsDir.path}/$_reciterVbyvPath');
+      await verseDir.create(recursive: true);
+      
+      final String surahPad = surahIndex.toString().padLeft(3, '0');
+      final String ayahPad = ayahIndex.toString().padLeft(3, '0');
+      final String filename = "$surahPad$ayahPad.mp3";
+      final File localFile = File('${verseDir.path}/$filename');
+      
+      if (!await localFile.exists() || await localFile.length() == 0) {
+        final url = '$_reciterVbyvOnlineUrl$filename';
+        final response = await http.get(Uri.parse(url));
+        if (response.statusCode == 200) {
+          await localFile.writeAsBytes(response.bodyBytes);
+          _checkLocalAudioFiles();
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _playStarredSingle(int surahIndex, int ayahIndex) async {
+    _stopPlayback();
+    setState(() {
+      _isPlaying = true;
+      _activeAyahIndex = ayahIndex;
+      _selectedSurahIndex = surahIndex;
+    });
+    
+    singlePlayMode = true;
+    _playbackMode = 'starred-single';
+    _singlePlayAyahIndex = ayahIndex;
+    _currentAyahPlayCount = 0;
+    
+    final String surahPad = surahIndex.toString().padLeft(3, '0');
+    final String ayahPad = ayahIndex.toString().padLeft(3, '0');
+    final String filename = "$surahPad$ayahPad.mp3";
+    
+    final docsDir = await getApplicationDocumentsDirectory();
+    final localFile = File('${docsDir.path}/$_reciterVbyvPath/$filename');
+
+    final String sourcePath = (await localFile.exists() && await localFile.length() > 0)
+        ? localFile.path
+        : '$_reciterVbyvOnlineUrl$filename';
+
+    try {
+      await _audioPlayer.setAudioSource(
+        sourcePath.startsWith('/')
+            ? AudioSource.file(sourcePath)
+            : AudioSource.uri(Uri.parse(sourcePath)),
+      );
+      await _audioPlayer.setSpeed(_playbackSpeed);
+      _audioPlayer.play();
+      
+      if (!sourcePath.startsWith('/')) {
+        _autoCacheFile(surahIndex, ayahIndex);
+      }
+    } catch (e) {
+      _stopPlayback();
+    }
+  }
+
+  Future<void> _playStarredInQueue() async {
+    if (_starredQueue.isEmpty || _starredQueueIndex >= _starredQueue.length) {
+      _stopPlayback();
+      return;
+    }
+    
+    final currentItem = _starredQueue[_starredQueueIndex];
+    final int surahIndex = currentItem['surah']!;
+    final int ayahIndex = currentItem['ayah']!;
+    
+    setState(() {
+      _selectedSurahIndex = surahIndex;
+      _activeAyahIndex = ayahIndex;
+    });
+    
+    final String surahPad = surahIndex.toString().padLeft(3, '0');
+    final String ayahPad = ayahIndex.toString().padLeft(3, '0');
+    final String filename = "$surahPad$ayahPad.mp3";
+    
+    final docsDir = await getApplicationDocumentsDirectory();
+    final localFile = File('${docsDir.path}/$_reciterVbyvPath/$filename');
+
+    final String sourcePath = (await localFile.exists() && await localFile.length() > 0)
+        ? localFile.path
+        : '$_reciterVbyvOnlineUrl$filename';
+
+    try {
+      await _audioPlayer.setAudioSource(
+        sourcePath.startsWith('/')
+            ? AudioSource.file(sourcePath)
+            : AudioSource.uri(Uri.parse(sourcePath)),
+      );
+      await _audioPlayer.setSpeed(_playbackSpeed);
+      _audioPlayer.play();
+      
+      if (!sourcePath.startsWith('/')) {
+        _autoCacheFile(surahIndex, ayahIndex);
+      }
+    } catch (e) {
+      _stopPlayback();
+    }
+  }
+
+  void _advanceStarredQueue() {
+    if (_starredQueueIndex < _starredQueue.length - 1) {
+      _starredQueueIndex++;
+      _playStarredInQueue();
+    } else {
+      _stopPlayback();
+    }
+  }
+
+  void _startStarredPlayback() {
+    _stopPlayback();
+    _starredQueue.clear();
+    for (var key in _starredAyahs) {
+      final parts = key.split('_');
+      if (parts.length == 2) {
+        final int sIdx = int.parse(parts[0]);
+        final int aIdx = int.parse(parts[1]);
+        _starredQueue.add({'surah': sIdx, 'ayah': aIdx});
+      }
+    }
+    
+    _starredQueue.sort((a, b) {
+      if (a['surah'] != b['surah']) {
+        return a['surah']!.compareTo(b['surah']!);
+      }
+      return a['ayah']!.compareTo(b['ayah']!);
+    });
+    
+    if (_starredQueue.isEmpty) {
+      _showErrorDialog("لا توجد آيات مفضلة للتشغيل.");
+      return;
+    }
+    
+    setState(() {
+      _isPlaying = true;
+      _playbackMode = 'starred';
+      _starredQueueIndex = 0;
+      _currentAyahPlayCount = 0;
+    });
+    
+    _playStarredInQueue();
+  }
+
+  Widget _buildStarredScreen() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    final Map<int, List<int>> grouped = {};
+    for (var key in _starredAyahs) {
+      final parts = key.split('_');
+      if (parts.length == 2) {
+        final sIdx = int.parse(parts[0]);
+        final aIdx = int.parse(parts[1]);
+        grouped.putIfAbsent(sIdx, () => []).add(aIdx);
+      }
+    }
+    
+    final sortedSurahIndexes = grouped.keys.toList()..sort();
+    for (var sIdx in sortedSurahIndexes) {
+      grouped[sIdx]!.sort();
+    }
+    
+    return Column(
+      children: [
+        _buildScreenHeader(
+          title: 'الآيات المفضلة والمراجعة',
+          onBack: () {
+            setState(() {
+              _currentScreen = 'menu';
+            });
+            _stopPlayback();
+          },
+        ),
+        
+        if (_starredAyahs.isEmpty)
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.star_outline_rounded, size: 70, color: Colors.grey.withOpacity(0.5)),
+                  const SizedBox(height: 16),
+                  const Text('قائمتك المفضلة فارغة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 8),
+                  const Text('قم بتمييز الآيات بنجمة أثناء القراءة لتظهر هنا', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+            ),
+          )
+        else ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: isDark ? const Color(0xFF0D221A).withOpacity(0.5) : const Color(0xFFE3EDE8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'عدد الآيات المفضلة: ${_starredAyahs.length}',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _startStarredPlayback,
+                  icon: const Icon(Icons.play_arrow, size: 16),
+                  label: const Text('تشغيل الكل متتالياً', style: TextStyle(fontSize: 12, fontFamily: 'Cairo')),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF2AF29),
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: sortedSurahIndexes.length,
+              itemBuilder: (context, index) {
+                final sIdx = sortedSurahIndexes[index];
+                final surahName = _surahs.isEmpty ? 'سورة $sIdx' : _surahs[sIdx - 1].name;
+                final ayahs = grouped[sIdx]!;
+                
+                return Card(
+                  color: isDark ? const Color(0xFF0D221A) : Colors.white,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: const Color(0xFFD4AF37).withOpacity(0.15)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.bookmark, color: Color(0xFFF2AF29), size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              surahName,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFFF2AF29)),
+                            ),
+                          ],
+                        ),
+                        const Divider(color: Colors.white10, height: 16),
+                        ...ayahs.map((aIdx) {
+                          final ayahText = _surahs.isEmpty ? '' : _surahs[sIdx - 1].ayahs[aIdx - 1].text;
+                          final isLocal = _localAyahs.contains("${sIdx.toString().padLeft(3, '0')}${aIdx.toString().padLeft(3, '0')}.mp3");
+                          final isPlayingThis = _playbackMode == 'starred-single' && _selectedSurahIndex == sIdx && _activeAyahIndex == aIdx;
+                          
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                CircleAvatar(
+                                  radius: 12,
+                                  backgroundColor: const Color(0xFFF2AF29).withOpacity(0.15),
+                                  child: Text(
+                                    _toArabicIndicNumbers(aIdx),
+                                    style: const TextStyle(fontSize: 10, color: Color(0xFFF2AF29), fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        ayahText,
+                                        style: const TextStyle(fontSize: 15, height: 1.6, fontFamily: 'Cairo'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(isPlayingThis && _isPlaying ? Icons.pause_circle : Icons.play_circle, color: const Color(0xFF3EC37A)),
+                                      onPressed: () {
+                                        if (isPlayingThis && _isPlaying) {
+                                          _audioPlayer.pause();
+                                        } else {
+                                          _playStarredSingle(sIdx, aIdx);
+                                        }
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                      onPressed: () {
+                                        setState(() {
+                                          _starredAyahs.remove("${sIdx}_$aIdx");
+                                          _savePreferences();
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _normalizeArabic(String text) {
+    final Map<String, String> diacritics = {
+      'َ': '', 'ُ': '', 'ِ': '', 'ْ': '', 'ّ': '', 'ً': '', 'ٌ': '', 'ٍ': '',
+      'أ': 'ا', 'إ': 'ا', 'آ': 'ا', 'ى': 'ي', 'ة': 'ه'
+    };
+    String result = text;
+    diacritics.forEach((key, value) {
+      result = result.replaceAll(key, value);
+    });
+    return result;
+  }
+
+  Widget _buildSearchScreen() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    final List<Map<String, dynamic>> results = [];
+    if (_searchQuery.trim().length >= 2) {
+      final normalizedQuery = _normalizeArabic(_searchQuery.trim());
+      for (var surah in _surahs) {
+        for (var ayah in surah.ayahs) {
+          final normalizedAyah = _normalizeArabic(ayah.text);
+          if (normalizedAyah.contains(normalizedQuery)) {
+            results.add({
+              'surahIndex': surah.index,
+              'surahName': surah.name,
+              'ayahIndex': ayah.index,
+              'text': ayah.text,
+            });
+          }
+        }
+      }
+    }
+    
+    return Column(
+      children: [
+        _buildScreenHeader(
+          title: 'البحث في الآيات',
+          onBack: () {
+            setState(() {
+              _currentScreen = 'menu';
+              _searchQuery = "";
+            });
+            _stopPlayback();
+          },
+        ),
+        
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextField(
+            autofocus: true,
+            style: const TextStyle(fontFamily: 'Cairo'),
+            decoration: InputDecoration(
+              hintText: 'ابحث عن آية أو كلمة (مثال: رحمن)...',
+              prefixIcon: const Icon(Icons.search, color: Color(0xFFF2AF29)),
+              suffixIcon: _searchQuery.isNotEmpty 
+                  ? IconButton(
+                      icon: const Icon(Icons.clear), 
+                      onPressed: () => setState(() => _searchQuery = ""),
+                    )
+                  : null,
+              filled: true,
+              fillColor: isDark ? const Color(0xFF0D221A) : Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: const Color(0xFFD4AF37).withOpacity(0.3)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFF2AF29), width: 2),
+              ),
+            ),
+            onChanged: (val) {
+              setState(() {
+                _searchQuery = val;
+              });
+            },
+          ),
+        ),
+        
+        Expanded(
+          child: _searchQuery.trim().length < 2
+              ? const Center(
+                  child: Text('اكتب حرفين على الأقل لبدء البحث...', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                )
+              : results.isEmpty
+                  ? const Center(
+                      child: Text('لم يتم العثور على نتائج تطابق بحثك', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: results.length,
+                      itemBuilder: (context, index) {
+                        final res = results[index];
+                        final int sIdx = res['surahIndex'];
+                        final int aIdx = res['ayahIndex'];
+                        
+                        return Card(
+                          color: isDark ? const Color(0xFF0D221A) : Colors.white,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(color: const Color(0xFFD4AF37).withOpacity(0.1)),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "${res['surName'] ?? res['surahName']} - الآية ${aIdx}",
+                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF2AF29), fontSize: 12),
+                                    ),
+                                    ElevatedButton.icon(
+                                      onPressed: () {
+                                        setState(() {
+                                          _selectedSurahIndex = sIdx;
+                                          _rangeFrom = aIdx;
+                                          _rangeTo = _surahs[sIdx - 1].ayahs.length;
+                                          _currentScreen = 'range';
+                                          _playbackMode = 'ayah';
+                                          _searchQuery = "";
+                                        });
+                                        _stopPlayback();
+                                        _checkLocalAudioFiles();
+                                      },
+                                      icon: const Icon(Icons.arrow_back, size: 14),
+                                      label: const Text('انتقال للآية', style: TextStyle(fontSize: 11, fontFamily: 'Cairo')),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF1E4637),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  res['text'],
+                                  style: const TextStyle(fontSize: 15, height: 1.6),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+        ),
+      ],
     );
   }
 }
