@@ -56,7 +56,7 @@ class _QuranAppState extends State<QuranApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'القرآن الكريم بصوت الحصري',
+      title: 'تحفيظ القرآن الكريم',
       debugShowCheckedModeBanner: false,
       themeMode: _themeMode,
       theme: ThemeData(
