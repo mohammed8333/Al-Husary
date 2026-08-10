@@ -888,12 +888,17 @@ class _QuranHomePageState extends State<QuranHomePage> {
     required Color iconColor,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
-      color: const Color(0xFF0D221A),
+      color: isDark ? const Color(0xFF0D221A) : const Color(0xFFE3EDE8),
       elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
-        side: const BorderSide(color: Color(0xFF1E4637)),
+        side: BorderSide(
+          color: isDark
+              ? const Color(0xFF1E4637)
+              : const Color(0xFFD4AF37).withOpacity(0.35),
+        ),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
@@ -907,10 +912,22 @@ class _QuranHomePageState extends State<QuranHomePage> {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: iconBgColor,
+                  color: isDark
+                      ? iconBgColor
+                      : (iconColor == const Color(0xFFF2AF29)
+                          ? const Color(0xFFB87600).withOpacity(0.15)
+                          : const Color(0xFF2E9C5D).withOpacity(0.15)),
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: Icon(icon, color: iconColor, size: 28),
+                child: Icon(
+                  icon,
+                  color: isDark
+                      ? iconColor
+                      : (iconColor == const Color(0xFFF2AF29)
+                          ? const Color(0xFFB87600)
+                          : const Color(0xFF2E9C5D)),
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 20),
               Expanded(
@@ -919,18 +936,18 @@ class _QuranHomePageState extends State<QuranHomePage> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: isDark ? Colors.white : const Color(0xFF1B352B),
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       desc,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF9BB8AC),
+                        color: isDark ? const Color(0xFF9BB8AC) : const Color(0xFF567366),
                         height: 1.4,
                       ),
                     ),
@@ -938,9 +955,9 @@ class _QuranHomePageState extends State<QuranHomePage> {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(
+              Icon(
                 Icons.chevron_left_rounded,
-                color: Color(0xFF9BB8AC),
+                color: isDark ? const Color(0xFF9BB8AC) : const Color(0xFF567366),
                 size: 24,
               ),
             ],
@@ -1162,9 +1179,9 @@ class _QuranHomePageState extends State<QuranHomePage> {
   }
 
   Widget _buildAyahListItem(int idx) {
-    final bool hasBismillah = _rangeFrom == 1 && _selectedSurahIndex != 1 && _selectedSurahIndex != 9;
+    final bool isBismillah = _rangeFrom == 1 && _selectedSurahIndex != 1 && _selectedSurahIndex != 9;
     
-    if (hasBismillah && idx == 0) {
+    if (isBismillah && idx == 0) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 16.0),
         child: Text(
@@ -1180,7 +1197,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
       );
     }
     
-    final int arrayIndex = _rangeFrom - 1 + (hasBismillah ? idx - 1 : idx);
+    final int arrayIndex = _rangeFrom - 1 + (isBismillah ? idx - 1 : idx);
     final ayah = _currentSurah.ayahs[arrayIndex];
     
     final isPlayingThis = _activeAyahIndex == ayah.index;
@@ -1188,15 +1205,18 @@ class _QuranHomePageState extends State<QuranHomePage> {
     final isStarred = _starredAyahs.contains(starKey);
     final showBlurred = _hideTextMode && !ayah.isRevealed;
     final isLocal = _isAyahLocal(ayah.index);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Card(
       color: isPlayingThis
-          ? const Color(0xFF1E4637).withOpacity(0.6)
-          : const Color(0xFF0D221A).withOpacity(0.4),
+          ? (isDark ? const Color(0xFF1E4637).withOpacity(0.6) : const Color(0xFFD1E5DB))
+          : (isDark ? const Color(0xFF0D221A).withOpacity(0.4) : const Color(0xFFE3EDE8).withOpacity(0.7)),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: isPlayingThis ? const Color(0xFFF2AF29) : const Color(0xFFD4AF37).withOpacity(0.15),
+          color: isPlayingThis 
+              ? (isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600)) 
+              : (isDark ? const Color(0xFFD4AF37).withOpacity(0.15) : const Color(0xFFD4AF37).withOpacity(0.35)),
         ),
       ),
       margin: const EdgeInsets.only(bottom: 10),
@@ -1224,11 +1244,13 @@ class _QuranHomePageState extends State<QuranHomePage> {
                         fontFamily: 'Amiri',
                         fontSize: 24,
                         height: 2.0,
-                        color: showBlurred ? Colors.transparent : Colors.white,
+                        color: showBlurred 
+                            ? Colors.transparent 
+                            : (isDark ? Colors.white : const Color(0xFF1B352B)),
                         shadows: showBlurred
-                            ? const [
+                            ? [
                                 Shadow(
-                                  color: Colors.white38,
+                                  color: isDark ? Colors.white38 : Colors.black38,
                                   blurRadius: 10,
                                 )
                               ]
@@ -1238,10 +1260,10 @@ class _QuranHomePageState extends State<QuranHomePage> {
                     const TextSpan(text: ' '),
                     TextSpan(
                       text: '\u200e\uFD3F${_toArabicIndicNumbers(ayah.index)}\uFD3E',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Amiri',
                         fontSize: 22,
-                        color: Color(0xFFF2AF29),
+                        color: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600),
                       ),
                     ),
                   ],
@@ -1273,17 +1295,19 @@ class _QuranHomePageState extends State<QuranHomePage> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: isStarred 
-                            ? const Color(0xFFF2AF29).withOpacity(0.2) 
-                            : Colors.white.withOpacity(0.05),
+                            ? (isDark ? const Color(0xFFF2AF29).withOpacity(0.2) : const Color(0xFFB87600).withOpacity(0.15)) 
+                            : (isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
                         border: Border.all(
                           color: isStarred 
-                              ? const Color(0xFFF2AF29) 
-                              : const Color(0xFFD4AF37).withOpacity(0.15),
+                              ? (isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600)) 
+                              : (isDark ? const Color(0xFFD4AF37).withOpacity(0.15) : const Color(0xFFD4AF37).withOpacity(0.35)),
                         ),
                       ),
                       child: Icon(
                         isStarred ? Icons.star : Icons.star_border,
-                        color: isStarred ? const Color(0xFFF2AF29) : Colors.white60,
+                        color: isStarred 
+                            ? (isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600)) 
+                            : (isDark ? Colors.white60 : const Color(0xFF567366)),
                         size: 20,
                       ),
                     ),
@@ -1303,10 +1327,10 @@ class _QuranHomePageState extends State<QuranHomePage> {
                     child: Container(
                       width: 48,
                       height: 48,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Color(0xFFF2AF29),
-                        boxShadow: [
+                        color: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600),
+                        boxShadow: const [
                           BoxShadow(
                             color: Colors.black26,
                             blurRadius: 6,
@@ -1316,7 +1340,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
                       ),
                       child: Icon(
                         (isPlayingThis && _isPlaying) ? Icons.pause : Icons.play_arrow,
-                        color: Colors.black,
+                        color: isDark ? Colors.black : Colors.white,
                         size: 24,
                       ),
                     ),
@@ -1331,14 +1355,18 @@ class _QuranHomePageState extends State<QuranHomePage> {
                       shape: BoxShape.circle,
                       color: isLocal 
                           ? Colors.green.withOpacity(0.15) 
-                          : const Color(0xFFF2AF29).withOpacity(0.1),
+                          : (isDark ? const Color(0xFFF2AF29).withOpacity(0.1) : const Color(0xFFB87600).withOpacity(0.15)),
                       border: Border.all(
-                        color: isLocal ? Colors.green : const Color(0xFFF2AF29),
+                        color: isLocal 
+                            ? Colors.green 
+                            : (isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600)),
                       ),
                     ),
                     child: Icon(
                       isLocal ? Icons.check_circle : Icons.wifi,
-                      color: isLocal ? Colors.green : const Color(0xFFF2AF29),
+                      color: isLocal 
+                          ? Colors.green 
+                          : (isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600)),
                       size: 20,
                     ),
                   ),
@@ -1352,13 +1380,26 @@ class _QuranHomePageState extends State<QuranHomePage> {
   }
 
   Widget _buildSpecificVersesHeader() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerBgColor = isDark ? const Color(0xFF0D221A) : const Color(0xFFE3EDE8);
+    final elementColor = isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600);
+    final borderCardColor = isDark ? const Color(0xFF1E4637) : const Color(0xFFD4AF37).withOpacity(0.35);
+
     return Container(
-      color: const Color(0xFF0D221A),
+      decoration: BoxDecoration(
+        color: headerBgColor,
+        border: Border(
+          bottom: BorderSide(
+            color: borderCardColor,
+            width: 2,
+          ),
+        ),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_forward),
+            icon: Icon(Icons.arrow_forward, color: elementColor),
             onPressed: () {
               setState(() {
                 _currentScreen = 'menu';
@@ -1373,11 +1414,20 @@ class _QuranHomePageState extends State<QuranHomePage> {
               children: [
                 Text(
                   _currentSurah.name,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18, 
+                    fontWeight: FontWeight.bold,
+                    color: elementColor,
+                    fontFamily: 'Cairo',
+                  ),
                 ),
                 Text(
                   'سورة رقم $_selectedSurahIndex • ${_currentSurah.ayahs.length} آيات',
-                  style: const TextStyle(fontSize: 11, color: Colors.white54),
+                  style: TextStyle(
+                    fontSize: 11, 
+                    color: isDark ? Colors.white54 : const Color(0xFF567366),
+                    fontFamily: 'Cairo',
+                  ),
                 ),
               ],
             ),
@@ -1387,20 +1437,29 @@ class _QuranHomePageState extends State<QuranHomePage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
             decoration: BoxDecoration(
-              color: const Color(0xFF06110D),
+              color: isDark ? const Color(0xFF06110D) : Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.2)),
+              border: Border.all(
+                color: isDark 
+                    ? const Color(0xFFD4AF37).withOpacity(0.2) 
+                    : const Color(0xFFB87600).withOpacity(0.3),
+              ),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<int>(
                 value: _selectedSurahIndex,
-                dropdownColor: const Color(0xFF0D221A),
+                dropdownColor: isDark ? const Color(0xFF0D221A) : Colors.white,
                 items: _surahs.map((surah) {
                   return DropdownMenuItem<int>(
                     value: surah.index,
                     child: Text(
                       surah.name,
-                      style: const TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontFamily: 'Cairo', 
+                        fontSize: 13, 
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600),
+                      ),
                     ),
                   );
                 }).toList(),
@@ -1425,156 +1484,219 @@ class _QuranHomePageState extends State<QuranHomePage> {
 
   Widget _buildMemorizationControlPanel() {
     if (_currentSurah.ayahs.isEmpty) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Container(
-      padding: const EdgeInsets.all(16.0),
-      color: const Color(0xFF0D221A).withOpacity(0.3),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      color: isDark ? const Color(0xFF0D221A).withOpacity(0.4) : const Color(0xFFE3EDE8),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Row 1: Range Selection
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('نطاق الحفظ:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white70)),
+              Text(
+                'نطاق الحفظ:', 
+                style: TextStyle(
+                  fontSize: 12, 
+                  fontWeight: FontWeight.bold, 
+                  color: isDark ? Colors.white70 : const Color(0xFF1B352B),
+                ),
+              ),
               Row(
                 children: [
-                  DropdownButton<int>(
-                    value: _rangeFrom,
-                    dropdownColor: const Color(0xFF0D221A),
-                    items: List.generate(_currentSurah.ayahs.length, (index) => index + 1)
-                        .map((val) => DropdownMenuItem(value: val, child: Text('من آية $val'))).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() {
-                          _rangeFrom = val;
-                          if (_rangeTo < val) _rangeTo = val;
-                        });
-                        _stopPlayback();
-                      }
-                    },
+                  DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _rangeFrom,
+                      dropdownColor: isDark ? const Color(0xFF0D221A) : Colors.white,
+                      style: TextStyle(
+                        fontFamily: 'Cairo', 
+                        fontSize: 12, 
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600),
+                      ),
+                      items: List.generate(_currentSurah.ayahs.length, (index) => index + 1)
+                          .map((val) => DropdownMenuItem(value: val, child: Text('من آية $val'))).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _rangeFrom = val;
+                            if (_rangeTo < val) _rangeTo = val;
+                          });
+                          _stopPlayback();
+                        }
+                      },
+                    ),
                   ),
-                  const SizedBox(width: 16),
-                  DropdownButton<int>(
-                    value: _rangeTo,
-                    dropdownColor: const Color(0xFF0D221A),
-                    items: List.generate(_currentSurah.ayahs.length, (index) => index + 1)
-                        .where((val) => val >= _rangeFrom)
-                        .map((val) => DropdownMenuItem(value: val, child: Text('إلى آية $val'))).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() {
-                          _rangeTo = val;
-                        });
-                        _stopPlayback();
-                      }
-                    },
+                  const SizedBox(width: 12),
+                  DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _rangeTo,
+                      dropdownColor: isDark ? const Color(0xFF0D221A) : Colors.white,
+                      style: TextStyle(
+                        fontFamily: 'Cairo', 
+                        fontSize: 12, 
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600),
+                      ),
+                      items: List.generate(_currentSurah.ayahs.length, (index) => index + 1)
+                          .where((val) => val >= _rangeFrom)
+                          .map((val) => DropdownMenuItem(value: val, child: Text('إلى آية $val'))).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _rangeTo = val;
+                          });
+                          _stopPlayback();
+                        }
+                      },
+                    ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
           
+          // Row 2: Counters & Buttons (Side by Side)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Counters (Side by side)
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      const Text('تكرار الآية:  ', style: TextStyle(fontSize: 12, color: Colors.white60)),
-                      _buildCounter(
-                        val: _ayahRepCount,
-                        onDec: () {
-                          if (_ayahRepCount > 1) {
-                            setState(() => _ayahRepCount--);
-                            _savePreferences();
-                          }
-                        },
-                        onInc: () {
-                          if (_ayahRepCount < 20) {
-                            setState(() => _ayahRepCount++);
-                            _savePreferences();
-                          }
-                        },
-                      ),
-                    ],
+                  Text(
+                    'الآية:', 
+                    style: TextStyle(
+                      fontSize: 11, 
+                      color: isDark ? Colors.white60 : const Color(0xFF567366),
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Text('تكرار الكل:  ', style: TextStyle(fontSize: 12, color: Colors.white60)),
-                      _buildCounter(
-                        val: _rangeRepCount,
-                        onDec: () {
-                          if (_rangeRepCount > 1) {
-                            setState(() => _rangeRepCount--);
-                            _savePreferences();
-                          }
-                        },
-                        onInc: () {
-                          if (_rangeRepCount < 20) {
-                            setState(() => _rangeRepCount++);
-                            _savePreferences();
-                          }
-                        },
-                      ),
-                    ],
+                  const SizedBox(width: 4),
+                  _buildCounter(
+                    val: _ayahRepCount,
+                    onDec: () {
+                      if (_ayahRepCount > 1) {
+                        setState(() => _ayahRepCount--);
+                        _savePreferences();
+                      }
+                    },
+                    onInc: () {
+                      if (_ayahRepCount < 20) {
+                        setState(() => _ayahRepCount++);
+                        _savePreferences();
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'الكل:', 
+                    style: TextStyle(
+                      fontSize: 11, 
+                      color: isDark ? Colors.white60 : const Color(0xFF567366),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  _buildCounter(
+                    val: _rangeRepCount,
+                    onDec: () {
+                      if (_rangeRepCount > 1) {
+                        setState(() => _rangeRepCount--);
+                        _savePreferences();
+                      }
+                    },
+                    onInc: () {
+                      if (_rangeRepCount < 20) {
+                        setState(() => _rangeRepCount++);
+                        _savePreferences();
+                      }
+                    },
                   ),
                 ],
               ),
               
-              Column(
+              // Buttons (Side by side)
+              Row(
                 children: [
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.cloud_download, size: 16),
-                    label: const Text('تحميل النطاق', style: TextStyle(fontSize: 12, fontFamily: 'Cairo')),
-                    onPressed: _isDownloading ? null : _downloadSelectedRange,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFF2AF29),
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  SizedBox(
+                    height: 28,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.cloud_download, size: 12),
+                      label: const Text('تحميل', style: TextStyle(fontSize: 10, fontFamily: 'Cairo')),
+                      onPressed: _isDownloading ? null : _downloadSelectedRange,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600),
+                        foregroundColor: isDark ? Colors.black : Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _hideTextMode = !_hideTextMode;
-                        for (var a in _currentSurah.ayahs) {
-                          a.isRevealed = !_hideTextMode;
-                        }
-                      });
-                    },
-                    icon: Icon(_hideTextMode ? Icons.visibility : Icons.visibility_off, size: 16),
-                    label: Text(_hideTextMode ? 'إظهار الآيات' : 'إخفاء الآيات', style: const TextStyle(fontSize: 12, fontFamily: 'Cairo')),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _hideTextMode ? const Color(0xFF1E4637) : const Color(0xFF0D221A),
-                      foregroundColor: _hideTextMode ? Colors.greenAccent : Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: const Color(0xFFD4AF37).withOpacity(0.15)),
+                  const SizedBox(width: 6),
+                  SizedBox(
+                    height: 28,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _hideTextMode = !_hideTextMode;
+                          for (var a in _currentSurah.ayahs) {
+                            a.isRevealed = !_hideTextMode;
+                          }
+                        });
+                      },
+                      icon: Icon(_hideTextMode ? Icons.visibility : Icons.visibility_off, size: 12),
+                      label: Text(_hideTextMode ? 'إظهار' : 'إخفاء', style: const TextStyle(fontSize: 10, fontFamily: 'Cairo')),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _hideTextMode 
+                            ? (isDark ? const Color(0xFF1E4637) : const Color(0xFFD1E5DB))
+                            : (isDark ? const Color(0xFF0D221A) : const Color(0xFFE3EDE8)),
+                        foregroundColor: _hideTextMode 
+                            ? (isDark ? Colors.greenAccent : const Color(0xFF2E9C5D))
+                            : (isDark ? Colors.white : const Color(0xFF1B352B)),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: isDark 
+                                ? const Color(0xFFD4AF37).withOpacity(0.15) 
+                                : const Color(0xFFB87600).withOpacity(0.2),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ],
-              )
+              ),
             ],
           ),
-          const SizedBox(height: 12),
-          const Divider(color: Colors.white12),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+          const Divider(color: Colors.white12, height: 1),
+          const SizedBox(height: 4),
+          
+          // Row 3: Reciter & Speed (Side by Side)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  const Text('القارئ: ', style: TextStyle(fontSize: 12, color: Colors.white60)),
+                  Text(
+                    'القارئ: ', 
+                    style: TextStyle(
+                      fontSize: 11, 
+                      color: isDark ? Colors.white60 : const Color(0xFF567366),
+                    ),
+                  ),
                   DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _selectedReciter,
-                      dropdownColor: const Color(0xFF0D221A),
-                      style: const TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF2AF29)),
+                      dropdownColor: isDark ? const Color(0xFF0D221A) : Colors.white,
+                      style: TextStyle(
+                        fontFamily: 'Cairo', 
+                        fontSize: 11, 
+                        fontWeight: FontWeight.bold, 
+                        color: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600),
+                      ),
                       items: const [
                         DropdownMenuItem(value: 'husary', child: Text('الحصري (المعلم)')),
                         DropdownMenuItem(value: 'minshawy', child: Text('المنشاوي (المعلم)')),
@@ -1596,12 +1718,22 @@ class _QuranHomePageState extends State<QuranHomePage> {
               ),
               Row(
                 children: [
-                  const Text('السرعة: ', style: TextStyle(fontSize: 12, color: Colors.white60)),
+                  Text(
+                    'السرعة: ', 
+                    style: TextStyle(
+                      fontSize: 11, 
+                      color: isDark ? Colors.white60 : const Color(0xFF567366),
+                    ),
+                  ),
                   DropdownButtonHideUnderline(
                     child: DropdownButton<double>(
                       value: _playbackSpeed,
-                      dropdownColor: const Color(0xFF0D221A),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF2AF29)),
+                      dropdownColor: isDark ? const Color(0xFF0D221A) : Colors.white,
+                      style: TextStyle(
+                        fontSize: 11, 
+                        fontWeight: FontWeight.bold, 
+                        color: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600),
+                      ),
                       items: const [
                         DropdownMenuItem(value: 0.75, child: Text('0.75x')),
                         DropdownMenuItem(value: 1.0, child: Text('1.0x')),
@@ -1631,19 +1763,37 @@ class _QuranHomePageState extends State<QuranHomePage> {
 
   // Header helpers
   Widget _buildScreenHeader({required String title, required VoidCallback onBack}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerBgColor = isDark ? const Color(0xFF0D221A) : const Color(0xFFE3EDE8);
+    final elementColor = isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600);
+    final borderCardColor = isDark ? const Color(0xFF1E4637) : const Color(0xFFD4AF37).withOpacity(0.35);
+
     return Container(
-      color: const Color(0xFF0D221A),
+      decoration: BoxDecoration(
+        color: headerBgColor,
+        border: Border(
+          bottom: BorderSide(
+            color: borderCardColor,
+            width: 2,
+          ),
+        ),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_forward),
+            icon: Icon(Icons.arrow_forward, color: elementColor),
             onPressed: onBack,
           ),
           const SizedBox(width: 8),
           Text(
             title,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: elementColor,
+              fontFamily: 'Cairo',
+            ),
           ),
         ],
       ),
@@ -1655,12 +1805,19 @@ class _QuranHomePageState extends State<QuranHomePage> {
     if (_currentScreen == 'menu') return const SizedBox.shrink();
     
     final isRangeMode = _currentScreen == 'range';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D221A),
-        border: Border(top: BorderSide(color: const Color(0xFFD4AF37).withOpacity(0.2))),
+        color: isDark ? const Color(0xFF0D221A) : const Color(0xFFE3EDE8),
+        border: Border(
+          top: BorderSide(
+            color: isDark
+                ? const Color(0xFF1E4637)
+                : const Color(0xFFD4AF37).withOpacity(0.35),
+          ),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1677,10 +1834,10 @@ class _QuranHomePageState extends State<QuranHomePage> {
                       trackHeight: 3,
                       thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                       overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-                      activeTrackColor: const Color(0xFFF2AF29),
-                      inactiveTrackColor: Colors.white12,
-                      thumbColor: const Color(0xFFF2AF29),
-                      overlayColor: const Color(0xFFF2AF29).withOpacity(0.2),
+                      activeTrackColor: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600),
+                      inactiveTrackColor: isDark ? Colors.white12 : Colors.black12,
+                      thumbColor: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600),
+                      overlayColor: (isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600)).withOpacity(0.2),
                       trackShape: const RectangularSliderTrackShape(),
                     ),
                     child: Slider(
@@ -1706,11 +1863,19 @@ class _QuranHomePageState extends State<QuranHomePage> {
                       children: [
                         Text(
                           _formatDuration(position),
-                          style: const TextStyle(fontSize: 10, color: Colors.white60, fontFamily: 'Cairo'),
+                          style: TextStyle(
+                            fontSize: 10, 
+                            color: isDark ? Colors.white60 : const Color(0xFF567366), 
+                            fontFamily: 'Cairo',
+                          ),
                         ),
                         Text(
                           _formatDuration(duration),
-                          style: const TextStyle(fontSize: 10, color: Colors.white60, fontFamily: 'Cairo'),
+                          style: TextStyle(
+                            fontSize: 10, 
+                            color: isDark ? Colors.white60 : const Color(0xFF567366), 
+                            fontFamily: 'Cairo',
+                          ),
                         ),
                       ],
                     ),
@@ -1728,17 +1893,26 @@ class _QuranHomePageState extends State<QuranHomePage> {
                 children: [
                   Text(
                     _currentSurah.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFFF2AF29)),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold, 
+                      fontSize: 16, 
+                      color: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600),
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Text(
                     _isCurrentSelectionLocal ? 'محلي' : 'أونلاين',
-                    style: const TextStyle(fontSize: 11, color: Colors.white70),
+                    style: TextStyle(
+                      fontSize: 11, 
+                      color: isDark ? Colors.white70 : const Color(0xFF567366),
+                    ),
                   ),
                   const SizedBox(width: 4),
                   Icon(
                     _isCurrentSelectionLocal ? Icons.check_circle : Icons.wifi,
-                    color: _isCurrentSelectionLocal ? Colors.green : const Color(0xFFF2AF29),
+                    color: _isCurrentSelectionLocal 
+                        ? Colors.green 
+                        : (isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600)),
                     size: 16,
                   ),
                 ],
@@ -1749,7 +1923,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
                 children: [
                   if (isRangeMode) ...[
                     IconButton(
-                      icon: const Icon(Icons.skip_previous, size: 28),
+                      icon: Icon(Icons.skip_previous, size: 28, color: isDark ? Colors.white70 : const Color(0xFF1B352B)),
                       onPressed: () {
                         if (_activeAyahIndex != null && _activeAyahIndex! > _rangeFrom) {
                           _activeQueueIndex = _activeAyahIndex! - 1;
@@ -1788,7 +1962,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
                   const SizedBox(width: 4),
                   if (isRangeMode) ...[
                     IconButton(
-                      icon: const Icon(Icons.skip_next, size: 28),
+                      icon: Icon(Icons.skip_next, size: 28, color: isDark ? Colors.white70 : const Color(0xFF1B352B)),
                       onPressed: () {
                         if (_activeAyahIndex != null && _activeAyahIndex! < _rangeTo) {
                           _activeQueueIndex = _activeAyahIndex! + 1;
@@ -1799,7 +1973,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
                     const SizedBox(width: 4),
                   ],
                   IconButton(
-                    icon: const Icon(Icons.stop, size: 26, color: Colors.white60),
+                    icon: Icon(Icons.stop, size: 26, color: isDark ? Colors.white60 : const Color(0xFF567366)),
                     onPressed: _stopPlayback,
                   ),
                 ],
@@ -1814,11 +1988,19 @@ class _QuranHomePageState extends State<QuranHomePage> {
                     });
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _delayActive ? const Color(0xFF1E4637) : Colors.black12,
-                    foregroundColor: _delayActive ? Colors.greenAccent : Colors.white70,
+                    backgroundColor: _delayActive 
+                        ? const Color(0xFF1E4637) 
+                        : (isDark ? Colors.black12 : const Color(0xFFD1E5DB)),
+                    foregroundColor: _delayActive 
+                        ? (isDark ? Colors.greenAccent : const Color(0xFF1B352B))
+                        : (isDark ? Colors.white70 : const Color(0xFF1B352B)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: const Color(0xFFD4AF37).withOpacity(0.15)),
+                      side: BorderSide(
+                        color: isDark 
+                            ? const Color(0xFFD4AF37).withOpacity(0.15) 
+                            : const Color(0xFFB87600).withOpacity(0.2),
+                      ),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   ),
@@ -1841,11 +2023,17 @@ class _QuranHomePageState extends State<QuranHomePage> {
 
   // Kid friendly counter widget
   Widget _buildCounter({required int val, required VoidCallback onDec, required VoidCallback onInc}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final elementColor = isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black38,
+        color: isDark ? Colors.black38 : Colors.white70,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.2)),
+        border: Border.all(
+          color: isDark 
+              ? const Color(0xFFD4AF37).withOpacity(0.2) 
+              : const Color(0xFFB87600).withOpacity(0.2),
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       child: Row(
@@ -1853,25 +2041,43 @@ class _QuranHomePageState extends State<QuranHomePage> {
         children: [
           GestureDetector(
             onTap: onDec,
-            child: const CircleAvatar(
+            child: CircleAvatar(
               radius: 12,
               backgroundColor: Colors.transparent,
-              child: Text('-', style: TextStyle(color: Color(0xFFF2AF29), fontWeight: FontWeight.bold, fontSize: 16)),
+              child: Text(
+                '-', 
+                style: TextStyle(
+                  color: elementColor, 
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 16,
+                ),
+              ),
             ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10.0),
             child: Text(
               val.toString(),
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              style: TextStyle(
+                fontWeight: FontWeight.bold, 
+                fontSize: 13,
+                color: isDark ? Colors.white : const Color(0xFF1B352B),
+              ),
             ),
           ),
           GestureDetector(
             onTap: onInc,
-            child: const CircleAvatar(
+            child: CircleAvatar(
               radius: 12,
               backgroundColor: Colors.transparent,
-              child: Text('+', style: TextStyle(color: Color(0xFFF2AF29), fontWeight: FontWeight.bold, fontSize: 16)),
+              child: Text(
+                '+', 
+                style: TextStyle(
+                  color: elementColor, 
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 16,
+                ),
+              ),
             ),
           ),
         ],
@@ -2254,7 +2460,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
             style: const TextStyle(fontFamily: 'Cairo'),
             decoration: InputDecoration(
               hintText: 'ابحث عن آية أو كلمة (مثال: رحمن)...',
-              prefixIcon: const Icon(Icons.search, color: Color(0xFFF2AF29)),
+              prefixIcon: Icon(Icons.search, color: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600)),
               suffixIcon: _searchQuery.isNotEmpty 
                   ? IconButton(
                       icon: const Icon(Icons.clear), 
@@ -2269,7 +2475,7 @@ class _QuranHomePageState extends State<QuranHomePage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFF2AF29), width: 2),
+                borderSide: BorderSide(color: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600), width: 2),
               ),
             ),
             onChanged: (val) {
@@ -2314,7 +2520,11 @@ class _QuranHomePageState extends State<QuranHomePage> {
                                   children: [
                                     Text(
                                       "${res['surName'] ?? res['surahName']} - الآية ${aIdx}",
-                                      style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF2AF29), fontSize: 12),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold, 
+                                        color: isDark ? const Color(0xFFF2AF29) : const Color(0xFFB87600), 
+                                        fontSize: 12,
+                                      ),
                                     ),
                                     ElevatedButton.icon(
                                       onPressed: () {
@@ -2332,8 +2542,8 @@ class _QuranHomePageState extends State<QuranHomePage> {
                                       icon: const Icon(Icons.arrow_back, size: 14),
                                       label: const Text('انتقال للآية', style: TextStyle(fontSize: 11, fontFamily: 'Cairo')),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF1E4637),
-                                        foregroundColor: Colors.white,
+                                        backgroundColor: isDark ? const Color(0xFF1E4637) : const Color(0xFFD1E5DB),
+                                        foregroundColor: isDark ? Colors.white : const Color(0xFF1B352B),
                                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                       ),
